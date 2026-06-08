@@ -27,9 +27,7 @@ if not st.session_state.get("autenticado"):
     st.title("Financas 2026")
     senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
     if st.button("Entrar", use_container_width=True):
-        import hashlib
-        h = hashlib.sha256(senha.encode()).hexdigest()
-        if h == st.secrets.get("app_password_hash", ""):
+        if senha == st.secrets.get("app_password", ""):
             st.session_state.autenticado = True
             st.rerun()
         else:
