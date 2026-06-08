@@ -5,9 +5,36 @@ from collections import defaultdict
 from datetime import date
 import gspread
 from google.oauth2.service_account import Credentials
-import json, os
+import hashlib, json, os
 
 SHEET_ID = "1LR63NFna6y1z88aI1HxRKq8kyNGaPN_3-dLzX3kn5Ys"
+
+
+def _check_password():
+    """Bloqueia o app até o usuário digitar a senha correta."""
+    if st.session_state.get("autenticado"):
+        return True
+
+    st.set_page_config(page_title="Financas 2026", layout="centered")
+    st.markdown("""
+    <style>.block-container{max-width:360px;padding-top:4rem;}</style>
+    """, unsafe_allow_html=True)
+
+    st.title("Financas 2026")
+    senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+    if st.button("Entrar", use_container_width=True):
+        senha_hash = hashlib.sha256(senha.encode()).hexdigest()
+        if senha_hash == st.secrets.get("app_password_hash", ""):
+            st.session_state.autenticado = True
+            st.rerun()
+        else:
+            st.error("Senha incorreta.")
+    st.stop()
+    return False
+
+
+if not st.session_state.get("autenticado"):
+    _check_password()
 
 _MES_NUM = {
     'Jan': 1, 'Fev': 2, 'Mar': 3, 'Abr': 4,
