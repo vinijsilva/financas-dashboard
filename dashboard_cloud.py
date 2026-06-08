@@ -82,6 +82,17 @@ def fmt_k(v):
 def _ordem_mes(aba):
     return _MES_NUM.get(aba.split('.')[0], 99)
 
+def _parse_brl(v):
+    """Converte string pt-BR (ex: '17547,78' ou '17.547,78') para float."""
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip()
+    if not s:
+        return 0.0
+    # Remove separador de milhar e troca decimal
+    s = s.replace('.', '').replace(',', '.')
+    return float(s)
+
 def _get_creds():
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -100,17 +111,25 @@ def _get_sheet():
 
 
 # ── Carregamento de dados ────────────────────────────────────────────
+def _ws_to_dicts(ws):
+    """Lê worksheet como lista de dicts usando get_all_values() (strings brutas)."""
+    rows = ws.get_all_values()
+    if not rows:
+        return []
+    headers = rows[0]
+    return [dict(zip(headers, row)) for row in rows[1:]]
+
 @st.cache_data(ttl=300, show_spinner="Carregando dados...")
 def carregar():
     sh = _get_sheet()
 
     despesas  = defaultdict(list)
     total_mes = defaultdict(float)
-    for r in sh.worksheet("Despesas").get_all_records():
+    for r in _ws_to_dicts(sh.worksheet("Despesas")):
         if not r.get("Mes") or not r.get("Valor"):
             continue
         try:
-            valor = float(r["Valor"])
+            valor = _parse_brl(r["Valor"])
         except (ValueError, TypeError):
             continue
         mes = r["Mes"]
@@ -126,11 +145,11 @@ def carregar():
         total_mes[mes] += valor
 
     receitas = []
-    for r in sh.worksheet("Recebimentos").get_all_records():
+    for r in _ws_to_dicts(sh.worksheet("Recebimentos")):
         if not r.get("Origem") or not r.get("Valor"):
             continue
         try:
-            valor = float(r["Valor"])
+            valor = _parse_brl(r["Valor"])
         except (ValueError, TypeError):
             continue
         receitas.append({
