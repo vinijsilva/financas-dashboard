@@ -480,7 +480,7 @@ elif pagina == "Chat IA":
     from google import genai as genai_new
     from google.genai import types as genai_types
 
-    _GEMINI_MODELS = ["gemini-1.5-flash", "gemini-2.5-flash"]
+    _GEMINI_MODELS = ["gemini-2.5-flash-lite", "gemini-2.0-flash-lite", "gemini-2.5-flash"]
 
     def _gemini_call(client, hist, system):
         last_err = None
