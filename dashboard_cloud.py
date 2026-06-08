@@ -480,6 +480,24 @@ elif pagina == "Chat IA":
     from google import genai as genai_new
     from google.genai import types as genai_types
 
+    _GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+
+    def _gemini_call(client, hist, system):
+        last_err = None
+        for model in _GEMINI_MODELS:
+            try:
+                resp = client.models.generate_content(
+                    model=model,
+                    contents=hist,
+                    config=genai_types.GenerateContentConfig(system_instruction=system),
+                )
+                return resp.text
+            except Exception as e:
+                last_err = e
+                if "503" not in str(e) and "UNAVAILABLE" not in str(e):
+                    break
+        raise last_err
+
     if "chat_historico" not in st.session_state or st.session_state.get("chat_mes") != mes_atual:
         ctx = montar_contexto(despesas, total_mes, receitas, meses)
         system = f"""Você é um assistente financeiro pessoal inteligente e direto do Vinicius.
@@ -520,12 +538,7 @@ Seja objetivo — máximo 3 parágrafos por resposta, a não ser que seja pedido
                 client = st.session_state.gemini_client
                 hist   = st.session_state.gemini_history
                 hist.append(genai_types.Content(role="user", parts=[genai_types.Part(text=s)]))
-                resp = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=hist,
-                    config=genai_types.GenerateContentConfig(system_instruction=st.session_state.gemini_system),
-                )
-                texto = resp.text
+                texto = _gemini_call(client, hist, st.session_state.gemini_system)
                 hist.append(genai_types.Content(role="model", parts=[genai_types.Part(text=texto)]))
                 st.session_state.chat_historico.append({"role": "assistant", "content": texto})
             except Exception as e:
@@ -548,12 +561,7 @@ Seja objetivo — máximo 3 parágrafos por resposta, a não ser que seja pedido
                     client = st.session_state.gemini_client
                     hist = st.session_state.gemini_history
                     hist.append(genai_types.Content(role="user", parts=[genai_types.Part(text=prompt)]))
-                    resp = client.models.generate_content(
-                        model="gemini-2.5-flash",
-                        contents=hist,
-                        config=genai_types.GenerateContentConfig(system_instruction=st.session_state.gemini_system),
-                    )
-                    texto = resp.text
+                    texto = _gemini_call(client, hist, st.session_state.gemini_system)
                     hist.append(genai_types.Content(role="model", parts=[genai_types.Part(text=texto)]))
                     st.markdown(texto)
                     st.session_state.chat_historico.append({"role": "assistant", "content": texto})
