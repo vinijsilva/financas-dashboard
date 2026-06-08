@@ -27,7 +27,14 @@ if not st.session_state.get("autenticado"):
     st.title("Financas 2026")
     senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
     if st.button("Entrar", use_container_width=True):
-        if senha == st.secrets.get("app_password", ""):
+        try:
+            senha_correta = st.secrets["app_password"]
+        except Exception:
+            try:
+                senha_correta = st.secrets["gcp_service_account"]["app_password"]
+            except Exception:
+                senha_correta = ""
+        if senha == senha_correta:
             st.session_state.autenticado = True
             st.rerun()
         else:
