@@ -458,7 +458,8 @@ elif pagina == "Chat IA":
         st.caption("Adicione essa linha nos Secrets do Streamlit Cloud (share.streamlit.io → seu app → Settings → Secrets)")
         st.stop()
 
-    import google.generativeai as genai
+    from google import genai as genai_new
+    from google.genai import types as genai_types
 
     if "chat_historico" not in st.session_state or st.session_state.get("chat_mes") != mes_atual:
         ctx = montar_contexto(despesas, total_mes, receitas, meses)
@@ -470,9 +471,10 @@ Seja objetivo — máximo 3 parágrafos por resposta, a não ser que seja pedido
 
 {ctx}"""
         try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system)
-            st.session_state.gemini_model = model.start_chat(history=[])
+            client = genai_new.Client(api_key=api_key)
+            st.session_state.gemini_client = client
+            st.session_state.gemini_system = system
+            st.session_state.gemini_history = []
             st.session_state.chat_historico = []
             st.session_state.chat_mes = mes_atual
         except Exception as e:
@@ -496,8 +498,17 @@ Seja objetivo — máximo 3 parágrafos por resposta, a não ser que seja pedido
         if cols[i % 2].button(s, use_container_width=True, key=f"sug_{i}"):
             st.session_state.chat_historico.append({"role": "user", "content": s})
             try:
-                resp = st.session_state.gemini_model.send_message(s)
-                st.session_state.chat_historico.append({"role": "assistant", "content": resp.text})
+                client = st.session_state.gemini_client
+                hist   = st.session_state.gemini_history
+                hist.append(genai_types.Content(role="user", parts=[genai_types.Part(text=s)]))
+                resp = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=hist,
+                    config=genai_types.GenerateContentConfig(system_instruction=st.session_state.gemini_system),
+                )
+                texto = resp.text
+                hist.append(genai_types.Content(role="model", parts=[genai_types.Part(text=texto)]))
+                st.session_state.chat_historico.append({"role": "assistant", "content": texto})
             except Exception as e:
                 st.session_state.chat_historico.append({"role": "assistant", "content": f"Erro: {e}"})
             st.rerun()
@@ -515,9 +526,18 @@ Seja objetivo — máximo 3 parágrafos por resposta, a não ser que seja pedido
         with st.chat_message("assistant"):
             with st.spinner("Analisando..."):
                 try:
-                    resp = st.session_state.gemini_model.send_message(prompt)
-                    st.markdown(resp.text)
-                    st.session_state.chat_historico.append({"role": "assistant", "content": resp.text})
+                    client = st.session_state.gemini_client
+                    hist = st.session_state.gemini_history
+                    hist.append(genai_types.Content(role="user", parts=[genai_types.Part(text=prompt)]))
+                    resp = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=hist,
+                        config=genai_types.GenerateContentConfig(system_instruction=st.session_state.gemini_system),
+                    )
+                    texto = resp.text
+                    hist.append(genai_types.Content(role="model", parts=[genai_types.Part(text=texto)]))
+                    st.markdown(texto)
+                    st.session_state.chat_historico.append({"role": "assistant", "content": texto})
                 except Exception as e:
                     st.error(f"Erro: {e}")
 
