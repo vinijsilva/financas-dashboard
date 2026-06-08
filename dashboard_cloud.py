@@ -262,17 +262,17 @@ if pagina == "Início":
     c3.metric("Variáveis",  fmt_k(t_var))
 
     # Receita e saldo do mês
+    mes_str = f"{hoje.month:02d}"
+    ano_str = str(hoje.year)
     rec_mes = sum(
         r['valor'] for r in receitas
-        if r.get('data', '')[3:5] == f"{hoje.month:02d}" or
-           f"/{hoje.year}" in r.get('data', '') and
-           r.get('data', '')[3:5] == f"{hoje.month:02d}"
+        if r.get('data', '')[3:5] == mes_str
+        and r.get('data', '')[6:10] == ano_str
     )
-    saldo_mes = rec_mes - t_atual if rec_mes else None
-    if saldo_mes is not None:
+    if rec_mes:
+        saldo_mes = rec_mes - t_atual
         c1b, c2b = st.columns(2)
         c1b.metric("Receitas do mês", fmt_k(rec_mes))
-        cor_s = "#10b981" if saldo_mes >= 0 else "#ef4444"
         c2b.metric("Saldo do mês", fmt_k(saldo_mes))
 
     st.divider()
