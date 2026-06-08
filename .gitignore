@@ -1,0 +1,15 @@
+credenciais_google.json
+.streamlit/secrets.toml
+__pycache__/
+*.pyc
+*.xlsm
+*.pdf
+*.csv
+*.processado
+*.vbs
+*.ps1
+iniciar_dashboard.vbs
+configurar_autologin.ps1
+criar_sheet.py
+check_col_e.py
+.env
