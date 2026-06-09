@@ -260,14 +260,17 @@ st.divider()
 # INÍCIO
 # ════════════════════════════════════════════════════════════════════
 if pagina == "Início":
-    # Inicializa navegação: padrão = último mês com despesas variáveis lançadas
-    if 'inicio_mes_idx' not in st.session_state:
-        meses_reais = [m for m in meses
-                       if any(t.get('tipo') == 'variavel' for t in despesas.get(m, []))]
-        if meses_reais:
-            st.session_state.inicio_mes_idx = meses.index(meses_reais[-1])
-        else:
-            st.session_state.inicio_mes_idx = len(meses) - 1 if meses else 0
+    # Inicializa navegação: padrão = último mês com variáveis > R$ 1.000 (mês real, não pré-lançado)
+    _V = 3
+    if st.session_state.get('inicio_v') != _V:
+        st.session_state.inicio_v = _V
+        meses_reais = [
+            m for m in meses
+            if sum(t['valor'] for t in despesas.get(m, []) if t.get('tipo') == 'variavel') > 1000
+        ]
+        st.session_state.inicio_mes_idx = (
+            meses.index(meses_reais[-1]) if meses_reais else (len(meses) - 1 if meses else 0)
+        )
 
     idx_nav = st.session_state.inicio_mes_idx
     mes_inicio = meses[idx_nav] if meses else mes_atual
