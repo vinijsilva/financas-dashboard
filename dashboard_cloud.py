@@ -260,12 +260,9 @@ st.divider()
 # INÍCIO
 # ════════════════════════════════════════════════════════════════════
 if pagina == "Início":
-    # Inicializa navegação: padrão = último mês fechado (mês anterior ao atual)
+    # Inicializa navegação: padrão = último mês lançado na planilha
     if 'inicio_mes_idx' not in st.session_state:
-        if mes_key in meses:
-            st.session_state.inicio_mes_idx = max(0, meses.index(mes_key) - 1)
-        else:
-            st.session_state.inicio_mes_idx = len(meses) - 1
+        st.session_state.inicio_mes_idx = len(meses) - 1 if meses else 0
 
     idx_nav = st.session_state.inicio_mes_idx
     mes_inicio = meses[idx_nav] if meses else mes_atual
