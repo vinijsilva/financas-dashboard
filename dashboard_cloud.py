@@ -260,19 +260,44 @@ st.divider()
 # INÍCIO
 # ════════════════════════════════════════════════════════════════════
 if pagina == "Início":
-    t_atual = total_mes.get(mes_atual, 0)
-    t_fixo  = sum(t['valor'] for t in despesas.get(mes_atual, []) if t.get('tipo') == 'fixo')
-    t_var   = sum(t['valor'] for t in despesas.get(mes_atual, []) if t.get('tipo') == 'variavel')
+    # Inicializa navegação: padrão = último mês fechado (mês anterior ao atual)
+    if 'inicio_mes_idx' not in st.session_state:
+        if mes_key in meses:
+            st.session_state.inicio_mes_idx = max(0, meses.index(mes_key) - 1)
+        else:
+            st.session_state.inicio_mes_idx = len(meses) - 1
 
-    st.markdown(f"**{mes_atual}**")
+    idx_nav = st.session_state.inicio_mes_idx
+    mes_inicio = meses[idx_nav] if meses else mes_atual
+
+    # Navegação entre meses
+    col_p, col_m, col_n = st.columns([1, 3, 1])
+    with col_p:
+        if st.button("◀", disabled=(idx_nav == 0), use_container_width=True, key="btn_prev"):
+            st.session_state.inicio_mes_idx -= 1
+            st.rerun()
+    with col_m:
+        st.markdown(
+            f"<div style='text-align:center;font-weight:600;font-size:1.1rem;padding:6px 0'>"
+            f"{mes_inicio}</div>",
+            unsafe_allow_html=True,
+        )
+    with col_n:
+        if st.button("▶", disabled=(idx_nav >= len(meses) - 1), use_container_width=True, key="btn_next"):
+            st.session_state.inicio_mes_idx += 1
+            st.rerun()
+
+    t_atual = total_mes.get(mes_inicio, 0)
+    t_fixo  = sum(t['valor'] for t in despesas.get(mes_inicio, []) if t.get('tipo') == 'fixo')
+    t_var   = sum(t['valor'] for t in despesas.get(mes_inicio, []) if t.get('tipo') == 'variavel')
+
     c1, c2, c3 = st.columns(3)
 
-    idx_atual = meses.index(mes_atual) if mes_atual in meses else -1
-    if idx_atual > 0:
-        t_ant     = total_mes.get(meses[idx_atual - 1], 0)
+    if idx_nav > 0:
+        t_ant     = total_mes.get(meses[idx_nav - 1], 0)
         delta_pct = (t_atual - t_ant) / t_ant * 100 if t_ant else 0
         sinal     = "+" if delta_pct >= 0 else ""
-        delta_lbl = f"{sinal}{delta_pct:.1f}% vs {meses[idx_atual-1]}"
+        delta_lbl = f"{sinal}{delta_pct:.1f}% vs {meses[idx_nav - 1]}"
     else:
         delta_lbl = None
 
@@ -280,9 +305,10 @@ if pagina == "Início":
     c2.metric("Fixos",      fmt_k(t_fixo))
     c3.metric("Variáveis",  fmt_k(t_var))
 
-    # Receita e saldo do mês
-    mes_str = f"{hoje.month:02d}"
-    ano_str = str(hoje.year)
+    # Receita e saldo do mês navegado
+    partes_nav = mes_inicio.split('.')
+    mes_str = f"{_MES_NUM.get(partes_nav[0], 0):02d}"
+    ano_str = partes_nav[1] if len(partes_nav) > 1 else str(hoje.year)
     rec_mes = sum(
         r['valor'] for r in receitas
         if r.get('data', '')[3:5] == mes_str
@@ -299,7 +325,7 @@ if pagina == "Início":
     # Categorias com barras horizontais (Altair)
     st.markdown("**Gastos por categoria**")
     por_cat = defaultdict(float)
-    for t in despesas.get(mes_atual, []):
+    for t in despesas.get(mes_inicio, []):
         por_cat[t['categoria']] += t['valor']
 
     if por_cat:
@@ -325,7 +351,7 @@ if pagina == "Início":
     # Evolução mensal
     st.markdown("**Evolução mensal**")
     df_bar = pd.DataFrame(
-        [(m, round(total_mes[m], 2), m == mes_atual) for m in meses],
+        [(m, round(total_mes[m], 2), m == mes_inicio) for m in meses],
         columns=["Mes", "Total", "Atual"],
     )
     chart_bar = alt.Chart(df_bar).mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4).encode(
@@ -415,18 +441,36 @@ elif pagina == "Despesas":
 # RECEITAS
 # ════════════════════════════════════════════════════════════════════
 elif pagina == "Receitas":
-    anos = sorted(set(r['data'][:4] for r in receitas if len(r['data']) >= 4), reverse=True)
-    if not anos:
+    # Extrai meses únicos de datas no formato DD/MM/YYYY
+    _NUM_MES_ABREV = {v: k for k, v in _MES_NUM.items()}
+    meses_rec = set()
+    for r in receitas:
+        d = r.get('data', '')
+        if len(d) >= 10:
+            try:
+                meses_rec.add((int(d[6:10]), int(d[3:5])))
+            except ValueError:
+                pass
+    if not meses_rec:
         st.info("Nenhum recebimento encontrado.")
         st.stop()
 
-    ano      = st.selectbox("Ano", anos)
+    meses_rec_sorted = sorted(meses_rec, reverse=True)
+    mes_labels = [f"{_NUM_MES_ABREV.get(m, m)}.{a}" for a, m in meses_rec_sorted]
+
+    sel_label = st.selectbox("Mês", mes_labels)
+    sel_idx   = mes_labels.index(sel_label)
+    sel_ano, sel_mes = meses_rec_sorted[sel_idx]
+
     filtrado = sorted(
-        [r for r in receitas if r['data'].startswith(ano)],
+        [r for r in receitas
+         if len(r.get('data', '')) >= 10
+         and int(r['data'][3:5]) == sel_mes
+         and int(r['data'][6:10]) == sel_ano],
         key=lambda x: x['data'], reverse=True,
     )
-    total_ano = sum(r['valor'] for r in filtrado)
-    st.metric(f"Total recebido em {ano}", fmt(total_ano))
+    total_mes_rec = sum(r['valor'] for r in filtrado)
+    st.metric(f"Total recebido em {sel_label}", fmt(total_mes_rec))
 
     # Breakdown por categoria (barras)
     por_cat = defaultdict(float)
