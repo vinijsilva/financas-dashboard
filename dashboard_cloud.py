@@ -172,7 +172,8 @@ def solicitar_sync():
             ws = sh.worksheet("Config")
         except gspread.exceptions.WorksheetNotFound:
             ws = sh.add_worksheet("Config", 10, 2)
-            ws.update([["Key", "Value"], ["sync_pending", "FALSE"], ["last_sync", "-"]])
+            ws.update([["Key", "Value"], ["sync_pending", "FALSE"], ["last_sync", "-"],
+                       ["import_pending", "FALSE"], ["last_import", "-"]])
         cell = ws.find("sync_pending")
         ws.update_cell(cell.row, 2, "TRUE")
         return True
@@ -185,6 +186,29 @@ def status_sync():
         ws = sh.worksheet("Config")
         data = {r["Key"]: r["Value"] for r in ws.get_all_records() if r.get("Key")}
         return data.get("sync_pending", "?"), data.get("last_sync", "-")
+    except Exception:
+        return "?", "-"
+
+def solicitar_import():
+    try:
+        sh = _get_sheet()
+        ws = sh.worksheet("Config")
+        data = {r["Key"]: r["Value"] for r in ws.get_all_records() if r.get("Key")}
+        if "import_pending" not in data:
+            ws.append_row(["import_pending", "FALSE"])
+            ws.append_row(["last_import", "-"])
+        cell = ws.find("import_pending")
+        ws.update_cell(cell.row, 2, "TRUE")
+        return True
+    except Exception:
+        return False
+
+def status_import():
+    try:
+        sh = _get_sheet()
+        ws = sh.worksheet("Config")
+        data = {r["Key"]: r["Value"] for r in ws.get_all_records() if r.get("Key")}
+        return data.get("import_pending", "?"), data.get("last_import", "-")
     except Exception:
         return "?", "-"
 
@@ -628,6 +652,24 @@ Seja objetivo — máximo 3 parágrafos por resposta, a não ser que seja pedido
 # DADOS
 # ════════════════════════════════════════════════════════════════════
 elif pagina == "Dados":
+    st.markdown("**📥 Importar arquivos**")
+    st.caption("Roda o importador no PC — processa faturas/extratos novos das pastas e grava no Excel. O PC precisa estar ligado.")
+
+    imp_pending, last_import = status_import()
+    if imp_pending == "TRUE":
+        st.warning("⏳ Importação em andamento...")
+    elif imp_pending == "FALSE" and last_import != "-":
+        st.success(f"✅ Última importação: {last_import}")
+
+    if st.button("📥 Importar novos arquivos", use_container_width=True, type="primary"):
+        with st.spinner("Enviando solicitação..."):
+            ok = solicitar_import()
+        if ok:
+            st.success("Solicitação enviada! Importação iniciada em ~2 minutos se o PC estiver ligado.")
+        else:
+            st.error("Erro ao enviar. Verifique a conexão.")
+
+    st.divider()
     st.markdown("**📡 Sincronização**")
     st.caption("Solicita ao PC que envie os dados mais recentes da planilha Excel para o Google Sheets. O PC precisa estar ligado.")
 
