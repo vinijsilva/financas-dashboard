@@ -19,12 +19,12 @@ CAT_COR = {
     'MORADIA': '#4c8bf5', 'CARRO': '#94a3b8', 'MOTO': '#f97316',
     'BARCO': '#06b6d4', 'D. PESSOAL': '#a855f7', 'INVEST.': '#10b981',
     'THALI': '#ec4899', 'JULI': '#eab308',
-    'V2PA': '#6366f1', 'SAFO ENG.': '#6366f1',
+    'LPC': '#6366f1', 'SAFO ENG.': '#6366f1',
 }
 CAT_ICONE = {
     'MORADIA': '🏠', 'CARRO': '🚗', 'MOTO': '🏍️', 'BARCO': '⛵',
     'D. PESSOAL': '👤', 'INVEST.': '📈', 'THALI': '💝', 'JULI': '👶',
-    'V2PA': '🏢', 'SAFO ENG.': '🏢',
+    'LPC': '🏢', 'SAFO ENG.': '🏢',
 }
 
 # ── Page config (deve ser o primeiro comando Streamlit) ──────────────

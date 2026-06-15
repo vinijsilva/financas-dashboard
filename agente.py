@@ -56,15 +56,22 @@ def ler_dados():
     despesas = {}   # {aba: [{'data', 'descricao', 'valor', 'cartao', 'categoria', 'parcela', 'tipo'}]}
     total_mes = {}  # {aba: float}
 
+    hoje = datetime.now()
+
     for aba in MESES_ABAS:
         if aba not in wb.sheetnames:
             continue
-        ws = wb[aba]
-        linhas = []
 
         partes = aba.split('.')
         mes_num = _MES_NUM.get(partes[0], 1)
         ano_num = int(partes[1]) if len(partes) > 1 else 2026
+
+        # Ignorar meses futuros (após o mês atual)
+        if ano_num > hoje.year or (ano_num == hoje.year and mes_num > hoje.month):
+            continue
+
+        ws = wb[aba]
+        linhas = []
 
         for row in ws.iter_rows(min_row=3, max_col=13, values_only=True):
             # Custos variáveis (A-F, índices 0-5)
@@ -74,17 +81,17 @@ def ler_dados():
                     valor = float(row[2]) if row[2] else 0.0
                     descricao = str(row[1] or '')
                     cartao_val = str(row[3] or '')
-                    if _eh_duplicata_fixo(descricao, valor, cartao_val):
-                        continue
-                    linhas.append({
-                        'data': data,
-                        'descricao': descricao,
-                        'valor': valor,
-                        'cartao': cartao_val,
-                        'categoria': str(row[4] or ''),
-                        'parcela': str(row[5] or ''),
-                        'tipo': 'variavel',
-                    })
+                    # Sem continue: garante que o bloco de fixos abaixo sempre seja processado
+                    if not _eh_duplicata_fixo(descricao, valor, cartao_val):
+                        linhas.append({
+                            'data': data,
+                            'descricao': descricao,
+                            'valor': valor,
+                            'cartao': cartao_val,
+                            'categoria': str(row[4] or ''),
+                            'parcela': str(row[5] or ''),
+                            'tipo': 'variavel',
+                        })
                 except Exception:
                     pass
 
@@ -96,17 +103,16 @@ def ler_dados():
                     dia = min(dia, calendar.monthrange(ano_num, mes_num)[1])
                     data = datetime(ano_num, mes_num, dia).strftime('%d/%m/%Y')
                     valor = float(row[9]) if row[9] else 0.0
-                    if not valor:
-                        continue
-                    linhas.append({
-                        'data': data,
-                        'descricao': str(row[8] or ''),
-                        'valor': valor,
-                        'cartao': str(row[10] or ''),
-                        'categoria': str(row[11] or ''),
-                        'parcela': str(row[12] or ''),
-                        'tipo': 'fixo',
-                    })
+                    if valor:
+                        linhas.append({
+                            'data': data,
+                            'descricao': str(row[8] or ''),
+                            'valor': valor,
+                            'cartao': str(row[10] or ''),
+                            'categoria': str(row[11] or ''),
+                            'parcela': str(row[12] or ''),
+                            'tipo': 'fixo',
+                        })
                 except Exception:
                     pass
 
@@ -202,7 +208,7 @@ Categorias de despesas usadas:
 - INVEST.: Renda Fixa, Ações, Fundos Imobiliários, Títulos Públicos, Casal
 - THALI: PIX, Calvin (pet), Casa, Outros (gastos relacionados à Thalissa)
 - JULI: Heitor, Psicóloga, Casa, Outros (gastos relacionados à Júlia)
-- V2PA / SAFO ENG.: empresas do usuário (contador, impostos, PIX)
+- LPC / SAFO ENG.: empresas do usuário (contador, impostos, PIX)
 
 Coluna D (origem do gasto): XP (cartão de crédito XP), PIX - NUBANK, PIX - BB, NUBANK.
 
